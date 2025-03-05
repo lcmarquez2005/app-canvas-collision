@@ -1,145 +1,135 @@
 const canvas = document.getElementById("canvas");
-
 let ctx = canvas.getContext("2d");
 
-
-//Obtiene las dimensiones de la pantalla actual
-
 const window_height = 300;
-
-const window_width = 600;
-
+const window_width = 500;
 
 canvas.height = window_height;
-
 canvas.width = window_width;
-
-
 canvas.style.background = "#ff8";
 
+// Crear un objeto de sonido
+const collisionSound = new Audio('assets/bounce.mp3'); // Cambia por la URL del sonido si lo prefieres
+
+// Controlar la frecuencia de reproducción del sonido para evitar la sobrecarga
+let canPlaySound = true;
+
+// Restante código del juego...
 
 class Circle {
+    constructor(x, y, radius, color, text, speedX, speedY) {
+        this.posX = x;
+        this.posY = y;
+        this.radius = radius;
+        this.color = color;
+        this.text = text;
+        this.dx = speedX;
+        this.dy = speedY;
+    }
 
-constructor(x, y, radius, color, text, speed) {
+    draw(context) {
+        context.beginPath();
+        context.fillStyle = this.color;
+        context.arc(this.posX, this.posY, this.radius, 0, Math.PI * 2);
+        context.fill();
+        context.closePath();
 
-this.posX = x;
+        context.fillStyle = "white";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.font = "20px Arial";
+        context.fillText(this.text, this.posX, this.posY);
+    }
 
-this.posY = y;
+    update() {
+        if (this.posX + this.radius >= window_width || this.posX - this.radius <= 0) {
+            this.dx = -this.dx;
+            this.posX = this.posX + this.radius >= window_width ? window_width - this.radius : this.radius;
+        }
 
-this.radius = radius;
+        if (this.posY + this.radius >= window_height || this.posY - this.radius <= 0) {
+            this.dy = -this.dy;
+            this.posY = this.posY + this.radius >= window_height ? window_height - this.radius : this.radius;
+        }
 
-this.color = color;
-
-this.text = text;
-
-this.speed = speed;
-
-
-this.dx = 1 * this.speed;
-
-this.dy = 1 * this.speed;
-
+        this.posX += this.dx;
+        this.posY += this.dy;
+    }
 }
 
-
-draw(context) {
-
-context.beginPath();
-
-
-context.strokeStyle = this.color;
-
-context.textAlign = "center";
-
-context.textBaseline = "middle";
-
-context.font = "20px Arial";
-
-context.fillText(this.text, this.posX, this.posY);
-
-
-context.lineWidth = 2;
-
-context.arc(this.posX, this.posY, this.radius, 0, Math.PI * 2, false);
-
-context.stroke();
-
-context.closePath();
-
+function detectCollision(circle1, circle2) {
+    let dx = circle2.posX - circle1.posX;
+    let dy = circle2.posY - circle1.posY;
+    let distance = Math.sqrt(dx * dx + dy * dy);
+    return distance <= circle1.radius + circle2.radius;
 }
 
+function resolveCollision(circle1, circle2) {
+    let dx = circle2.posX - circle1.posX;
+    let dy = circle2.posY - circle1.posY;
+    let distance = Math.sqrt(dx * dx + dy * dy);
+    
+    let overlap = circle1.radius + circle2.radius - distance;
+    let normalizeX = dx / distance;
+    let normalizeY = dy / distance;
 
-update(context) {
+    circle1.posX -= normalizeX * overlap / 2;
+    circle1.posY -= normalizeY * overlap / 2;
+    circle2.posX += normalizeX * overlap / 2;
+    circle2.posY += normalizeY * overlap / 2;
 
-this.draw(context);
-
-
-if ((this.posX + this.radius) > window_width) {
-
-this.dx = -this.dx;
-
+    let tempDx = circle1.dx;
+    let tempDy = circle1.dy;
+    circle1.dx = circle2.dx;
+    circle1.dy = circle2.dy;
+    circle2.dx = tempDx;
+    circle2.dy = tempDy;
 }
 
+let circles = [];
+const numCircles = 5;
 
-if ((this.posX - this.radius) < 0) {
+for (let i = 0; i < numCircles; i++) {
+    let radius = Math.floor(Math.random() * 30) + 20;
+    let posX = Math.floor(Math.random() * (window_width - radius * 2)) + radius;
+    let posY = Math.floor(Math.random() * (window_height - radius * 2)) + radius;
+    let speedX = Math.floor(Math.random() * 6) + 2;
+    let speedY = Math.floor(Math.random() * 6) + 2;
+    let color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+    let text = `${i + 1}`;
 
-this.dx = -this.dx;
-
+    circles.push(new Circle(posX, posY, radius, color, text, speedX, speedY));
 }
 
+function updateCircle() {
+    requestAnimationFrame(updateCircle);
+    ctx.clearRect(0, 0, window_width, window_height);
 
-if ((this.posY - this.radius) < 0) {
+    circles.forEach(circle => circle.update());
 
-this.dy = -this.dy;
+    for (let i = 0; i < circles.length; i++) {
+        for (let j = i + 1; j < circles.length; j++) {
+            if (detectCollision(circles[i], circles[j])) {
+                circles[i].color = circles[i].color === "red" ? "green" : "red";
+                circles[j].color = circles[j].color === "red" ? "green" : "red";
 
+                resolveCollision(circles[i], circles[j]);
+
+                // Reproducir el sonido de colisión solo si es posible
+                if (canPlaySound) {
+                    collisionSound.play();
+                    canPlaySound = false;
+
+                    // Volver a habilitar la reproducción después de un corto retardo
+                    setTimeout(() => {
+                        canPlaySound = true;
+                    }, 200); // Ajusta el tiempo para evitar que se repita demasiado rápido
+                }
+            }
+        }
+    }
+
+    circles.forEach(circle => circle.draw(ctx));
 }
-
-
-if ((this.posY + this.radius) > window_height) {
-
-this.dy = -this.dy;
-
-}
-
-
-this.posX += this.dx;
-
-this.posY += this.dy;
-
-}
-
-
-}
-
-
-let randomX = Math.random() * window_width;
-
-let randomY = Math.random() * window_height;
-
-let randomRadius = Math.floor(Math.random() * 100 + 30);
-
-
-let miCirculo = new Circle(100, 100, 50, "blue", "1", 3);
-
-let miCirculo2 = new Circle(450, 150, 80, "blue", "2", 3);
-
-
-miCirculo.draw(ctx);
-
-miCirculo2.draw(ctx);
-
-
-let updateCircle = function () {
-
-requestAnimationFrame(updateCircle);
-
-ctx.clearRect(0, 0, window_width, window_height);
-
-miCirculo.update(ctx);
-
-miCirculo2.update(ctx);
-
-};
-
 
 updateCircle();
