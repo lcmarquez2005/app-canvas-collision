@@ -2,7 +2,7 @@ const canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 
 const window_height = 300;
-const window_width = 500;
+const window_width = getComputedStyle(canvas).width.slice(0, -2);
 
 canvas.height = window_height;
 canvas.width = window_width;
@@ -87,7 +87,9 @@ function resolveCollision(circle1, circle2) {
 }
 
 let circles = [];
-const numCircles = 5;
+
+const numCircles =  parseInt(prompt("Introduce el número de círculos a dibujar:"));
+
 
 for (let i = 0; i < numCircles; i++) {
     let radius = Math.floor(Math.random() * 30) + 20;
